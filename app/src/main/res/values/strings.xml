@@ -1,0 +1,17 @@
+<resources>
+    <string name="app_name">Deligo</string>
+    <string name="deligo_logo">DeliGO</string>
+    <string name="email_login">Email</string>
+    <string name="contraseña_login">Contraseña</string>
+    <string name="recuperar_contraseña_login">Recuperar contraseña</string>
+    <string name="ingresar_boton_login">INGRESAR</string>
+    <string name="registro_boton_login">REGISTRO</string>
+    <string name="nombre_login">Nombre</string>
+    <string name="phone_login">Telefono</string>
+    <string name="title_activity_home">Map</string>
+
+    <string name="access_token">pk.eyJ1IjoiY2VzYXJhbmRyZXMxMjMiLCJhIjoiY2ptcDVnNXE2MWJ2ZTNxanBqOTVmZ3JtbyJ9.uTIW5FJw3xbWqPUTWO0AJQ</string>
+    <string name="Google_Directions_key">AIzaSyB-CQThr1FjY4siOu-JPWsRSYulaYyIvVw</string>
+
+    <string name="solicitar">Buscar Deli.</string>
+</resources>
