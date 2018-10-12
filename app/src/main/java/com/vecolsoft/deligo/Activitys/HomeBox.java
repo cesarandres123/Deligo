@@ -18,6 +18,7 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.RelativeLayout;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.firebase.geofire.GeoFire;
@@ -46,7 +47,6 @@ import com.mapbox.mapboxsdk.annotations.MarkerOptions;
 import com.mapbox.mapboxsdk.camera.CameraPosition;
 import com.mapbox.mapboxsdk.camera.CameraUpdateFactory;
 import com.mapbox.mapboxsdk.geometry.LatLng;
-import com.mapbox.mapboxsdk.geometry.LatLngBounds;
 import com.mapbox.mapboxsdk.maps.MapView;
 import com.mapbox.mapboxsdk.maps.MapboxMap;
 import com.mapbox.mapboxsdk.maps.OnMapReadyCallback;
@@ -57,9 +57,14 @@ import com.vecolsoft.deligo.Modelo.Rider;
 import com.vecolsoft.deligo.Modelo.Sender;
 import com.vecolsoft.deligo.Modelo.Token;
 import com.vecolsoft.deligo.R;
+import com.vecolsoft.deligo.Remote.GetGson;
 import com.vecolsoft.deligo.Remote.IFCMService;
 import com.vecolsoft.deligo.Utils.InternetConnection;
 import com.vecolsoft.deligo.Utils.Utils;
+
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
 
 import java.util.List;
 
@@ -96,6 +101,7 @@ public class HomeBox extends AppCompatActivity implements
 
     //ELEMENTOS
     private AppCompatButton btnSolicitarDeli;
+    private TextView txtLocation;
 
     boolean isDriverFound = false;
     String DriverId = "";
@@ -117,6 +123,9 @@ public class HomeBox extends AppCompatActivity implements
 
     private static final int INTERVALO = 2000; //2 segundos para salir
     private long tiempoPrimerClick;
+
+    //////////Elementos de JsonParsing
+    GetGson mGetGson;
 
     @Override
     protected void attachBaseContext(Context newBase) {
@@ -140,8 +149,11 @@ public class HomeBox extends AppCompatActivity implements
         setContentView(R.layout.activity_home_box);
 
         mService = Common.getFCMService();
+        mGetGson = Common.getGson();
 
         prefs = getSharedPreferences("datos", Context.MODE_PRIVATE);
+
+
 
         mapView = (MapView) findViewById(R.id.mapViewBox);
         mapView.onCreate(savedInstanceState);
@@ -162,6 +174,9 @@ public class HomeBox extends AppCompatActivity implements
         toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
 
+        //location TextView
+        txtLocation = (TextView) findViewById(R.id.txtLocation);
+
 
         //BotonSolicitar
         btnSolicitarDeli = (AppCompatButton) findViewById(R.id.btnSolicitarDeli);
@@ -179,6 +194,8 @@ public class HomeBox extends AppCompatActivity implements
 
         CheckGPSStatus();
         updateFirebaseToken();
+
+
 
 
         //verificar internet
@@ -669,12 +686,57 @@ public class HomeBox extends AppCompatActivity implements
         if (location != null) {
             originLocation = location;
             displayLocation();
+            getLocation();
         }
     }
 
 
     //////////////////////////// MIOS
 
+    private void getLocation() {
+
+        String requestApi = null;
+        try {
+
+            requestApi = "https://api.mapbox.com/geocoding/v5/mapbox.places/" +
+                    originLocation.getLongitude() + "," + originLocation.getLatitude() +
+                    ".json?" +
+                    "access_token=" + getResources().getString(R.string.access_token);
+
+            Log.d("vencolsoft", requestApi); //print url for debug
+
+            mGetGson.getPath(requestApi)
+                    .enqueue(new Callback<String>() {
+                        @Override
+                        public void onResponse(Call<String> call, Response<String> response) {
+
+                            try {
+                                JSONObject jsonObject = new JSONObject(response.body().toString());
+
+                                JSONArray features = jsonObject.getJSONArray("features");
+
+                                JSONObject object = features.getJSONObject(0);
+
+                                JSONObject properties = object.getJSONObject("properties");
+
+//                                Get Address
+                                String address = properties.getString("address");
+                                txtLocation.setText(address);
+
+                            } catch (JSONException e) {
+                                e.printStackTrace();
+                            }
+                        }
+
+                        @Override
+                        public void onFailure(Call<String> call, Throwable t) {
+                            Toast.makeText(c, "" + t.getLocalizedMessage(), Toast.LENGTH_SHORT).show();
+                        }
+                    });
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
 
     private void logout() {
         Intent intent = new Intent(this, MainActivity.class);
@@ -727,6 +789,5 @@ public class HomeBox extends AppCompatActivity implements
         }
         tiempoPrimerClick = System.currentTimeMillis();
     }
-
 
 }
