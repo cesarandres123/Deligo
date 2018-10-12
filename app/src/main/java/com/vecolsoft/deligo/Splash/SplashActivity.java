@@ -15,7 +15,6 @@ import android.text.TextUtils;
 import com.google.firebase.auth.FirebaseAuth;
 import com.leo.simplearcloader.ArcConfiguration;
 import com.leo.simplearcloader.SimpleArcDialog;
-import com.vecolsoft.deligo.Activitys.Home;
 import com.vecolsoft.deligo.Activitys.HomeBox;
 import com.vecolsoft.deligo.Activitys.MainActivity;
 import com.vecolsoft.deligo.R;
