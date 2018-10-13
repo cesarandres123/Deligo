@@ -154,7 +154,6 @@ public class HomeBox extends AppCompatActivity implements
         prefs = getSharedPreferences("datos", Context.MODE_PRIVATE);
 
 
-
         mapView = (MapView) findViewById(R.id.mapViewBox);
         mapView.onCreate(savedInstanceState);
         mapView.getMapAsync(this);
@@ -194,8 +193,6 @@ public class HomeBox extends AppCompatActivity implements
 
         CheckGPSStatus();
         updateFirebaseToken();
-
-
 
 
         //verificar internet
@@ -500,9 +497,7 @@ public class HomeBox extends AppCompatActivity implements
                 mUserMarker.remove();
             }
             mUserMarker = mapboxMap.addMarker(new MarkerOptions()
-                    .position(new LatLng(originLocation.getLatitude(), originLocation.getLongitude()))
-                    .title("fddosfon")
-                    .snippet("foehfeof"));
+                    .position(new LatLng(originLocation.getLatitude(), originLocation.getLongitude())));
 
             CameraPosition position = new CameraPosition.Builder()
                     .target(new LatLng(originLocation.getLatitude(), originLocation.getLongitude())) // Sets the new camera position
@@ -513,6 +508,8 @@ public class HomeBox extends AppCompatActivity implements
             mapboxMap.animateCamera(CameraUpdateFactory.newCameraPosition(position));
 
             LoadAllAvailableDrivers();
+
+
         } else {
             Log.d("ERROR", "No se puede obtener la localisacion.");
         }
