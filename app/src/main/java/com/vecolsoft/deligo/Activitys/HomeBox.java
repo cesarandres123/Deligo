@@ -89,6 +89,10 @@ public class HomeBox extends AppCompatActivity implements
     private Location originLocation;
     private LocationManager locationManager;
 
+    private static int UPDATE_INTERVAL = 5000;
+    private static int FASTEST_INTERVAL = 3000;
+    private static int DISPLACEMENT = 10;
+
     // variable for adding map
     private MapView mapView;
     private Marker mUserMarker;
@@ -131,8 +135,6 @@ public class HomeBox extends AppCompatActivity implements
     protected void attachBaseContext(Context newBase) {
         super.attachBaseContext(CalligraphyContextWrapper.wrap(newBase));
     }
-
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         //Bolquear rotacion
@@ -541,6 +543,13 @@ public class HomeBox extends AppCompatActivity implements
         LocationEngineProvider locationEngineProvider = new LocationEngineProvider(this);
         locationEngine = locationEngineProvider.obtainBestLocationEngineAvailable();
         locationEngine.setPriority(LocationEnginePriority.HIGH_ACCURACY);
+
+        /////////////////////////////////////////
+        locationEngine.setInterval(UPDATE_INTERVAL);
+        locationEngine.setFastestInterval(FASTEST_INTERVAL);
+        locationEngine.setSmallestDisplacement(DISPLACEMENT);
+        /////////////////////////////////////////
+
         locationEngine.activate();
 
         Location lastLocation = locationEngine.getLastLocation();
