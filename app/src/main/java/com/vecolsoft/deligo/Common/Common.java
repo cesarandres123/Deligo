@@ -1,10 +1,10 @@
 package com.vecolsoft.deligo.Common;
 
+import android.location.Location;
+
 import com.vecolsoft.deligo.Modelo.Rider;
 import com.vecolsoft.deligo.Remote.FCMClient;
-import com.vecolsoft.deligo.Remote.GetGson;
 import com.vecolsoft.deligo.Remote.IFCMService;
-import com.vecolsoft.deligo.Remote.RetrofitClient;
 
 public class Common {
 
@@ -16,11 +16,8 @@ public class Common {
 
     public static Rider CurrentUser;
 
-    private static final String BASE_URL = "https://api.mapbox.com";
-    public static GetGson getGson()
-    {
-        return RetrofitClient.getClient(BASE_URL).create(GetGson.class);
-    }
+    public static Location MyLocation =  null;
+
 
     public static final String fcmURL = "https://fcm.googleapis.com/";
     public static IFCMService getFCMService()

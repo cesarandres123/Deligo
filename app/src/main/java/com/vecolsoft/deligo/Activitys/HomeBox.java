@@ -5,6 +5,8 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.ActivityInfo;
+import android.location.Address;
+import android.location.Geocoder;
 import android.location.Location;
 import android.location.LocationManager;
 import android.os.Bundle;
@@ -57,16 +59,14 @@ import com.vecolsoft.deligo.Modelo.Rider;
 import com.vecolsoft.deligo.Modelo.Sender;
 import com.vecolsoft.deligo.Modelo.Token;
 import com.vecolsoft.deligo.R;
-import com.vecolsoft.deligo.Remote.GetGson;
 import com.vecolsoft.deligo.Remote.IFCMService;
 import com.vecolsoft.deligo.Utils.InternetConnection;
 import com.vecolsoft.deligo.Utils.Utils;
 
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
-
+import java.io.IOException;
+import java.util.ConcurrentModificationException;
 import java.util.List;
+import java.util.Locale;
 
 import de.hdodenhof.circleimageview.CircleImageView;
 import retrofit2.Call;
@@ -86,8 +86,10 @@ public class HomeBox extends AppCompatActivity implements
     private MapboxMap mapboxMap;
     private PermissionsManager permissionsManager;
     private LocationEngine locationEngine;
-    private Location originLocation;
     private LocationManager locationManager;
+
+    //geocider location
+    Geocoder geocoder;
 
     private static int UPDATE_INTERVAL = 5000;
     private static int FASTEST_INTERVAL = 3000;
@@ -96,6 +98,7 @@ public class HomeBox extends AppCompatActivity implements
     // variable for adding map
     private MapView mapView;
     private Marker mUserMarker;
+
 
     //elementos del toolbar
     private Toolbar toolbar;
@@ -128,13 +131,12 @@ public class HomeBox extends AppCompatActivity implements
     private static final int INTERVALO = 2000; //2 segundos para salir
     private long tiempoPrimerClick;
 
-    //////////Elementos de JsonParsing
-    GetGson mGetGson;
 
     @Override
     protected void attachBaseContext(Context newBase) {
         super.attachBaseContext(CalligraphyContextWrapper.wrap(newBase));
     }
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         //Bolquear rotacion
@@ -151,7 +153,6 @@ public class HomeBox extends AppCompatActivity implements
         setContentView(R.layout.activity_home_box);
 
         mService = Common.getFCMService();
-        mGetGson = Common.getGson();
 
         prefs = getSharedPreferences("datos", Context.MODE_PRIVATE);
 
@@ -271,7 +272,7 @@ public class HomeBox extends AppCompatActivity implements
                         for (DataSnapshot postSnapShot : dataSnapshot.getChildren()) {
                             Token token = postSnapShot.getValue(Token.class);
 
-                            String json_lat_lng = new Gson().toJson(new LatLng(originLocation.getLatitude(), originLocation.getLongitude()));
+                            String json_lat_lng = new Gson().toJson(new LatLng(Common.MyLocation.getLatitude(), Common.MyLocation.getLongitude()));
                             String riderToken = FirebaseInstanceId.getInstance().getToken();
                             Notification data = new Notification(riderToken, json_lat_lng); //enviar esto a la app driver
                             Sender content = new Sender(token.getToken(), data); // enviar esta data al token
@@ -304,8 +305,8 @@ public class HomeBox extends AppCompatActivity implements
 
     private void SolicitarDeli(String uid) {
 
-        final double latitude = originLocation.getLatitude();
-        final double longitude = originLocation.getLongitude();
+        final double latitude = Common.MyLocation.getLatitude();
+        final double longitude = Common.MyLocation.getLongitude();
 
 
         DatabaseReference dbRequest = FirebaseDatabase.getInstance().getReference(Common.pickup_request_tbl);
@@ -317,18 +318,14 @@ public class HomeBox extends AppCompatActivity implements
                     }
                 });
 
-
-        //if (mUserMarker.isVisible()) {
         mUserMarker.remove();
         mUserMarker = mapboxMap.addMarker(new MarkerOptions()
                 .position(new LatLng(latitude, longitude))
                 .title("Recojer aqui"));
 
-        //mUserMarker.showInfoWindow();
         mapboxMap.selectMarker(mUserMarker);
 
         btnSolicitarDeli.setText("obteniendo Deli");
-        //}
 
         BuscarConductor();
 
@@ -338,7 +335,7 @@ public class HomeBox extends AppCompatActivity implements
         DatabaseReference drivers = FirebaseDatabase.getInstance().getReference(Common.driver_tbl);
         GeoFire gfDrivers = new GeoFire(drivers);
 
-        GeoQuery geoQuery = gfDrivers.queryAtLocation(new GeoLocation(originLocation.getLatitude(), originLocation.getLongitude()), Radius);
+        GeoQuery geoQuery = gfDrivers.queryAtLocation(new GeoLocation(Common.MyLocation.getLatitude(), Common.MyLocation.getLongitude()), Radius);
         geoQuery.removeAllListeners();
         geoQuery.addGeoQueryEventListener(new GeoQueryEventListener() {
             @Override
@@ -393,16 +390,32 @@ public class HomeBox extends AppCompatActivity implements
 
     private void LoadAllAvailableDrivers() {
 
-        mapboxMap.clear();
-        mapboxMap.addMarker(new MarkerOptions().position(new LatLng(originLocation.getLatitude(), originLocation.getLongitude()))
+        if (mapboxMap != null) {
+            mapboxMap.clear();
+
+        //añadir marcador de mi localisacion
+        //Ni puta idea por que tiene que ser aqui pero bueh!! hay vamos :*
+        if (mUserMarker != null) {
+            mUserMarker.remove();
+        }
+        mUserMarker = mapboxMap.addMarker(new MarkerOptions()
+                .position(new LatLng(Common.MyLocation.getLatitude(), Common.MyLocation.getLongitude()))
                 .title("Tu"));
 
-        // leer todos los conducteres avilitados en un radio de 3 km.
+        CameraPosition position = new CameraPosition.Builder()
+                .target(new LatLng(mUserMarker.getPosition().getLatitude(),mUserMarker.getPosition().getLongitude())) // Sets the new camera position
+                .zoom(15) // Sets the zoom to level 10
+                .tilt(20) // Set the camera tilt to 20 degrees
+                .build(); // Builds the CameraPosition object from the builder
+
+        mapboxMap.animateCamera(CameraUpdateFactory.newCameraPosition(position));
+        }
+        // leer todos los conductores avilitados en un radio de 3 km.
 
         DatabaseReference driverLocation = FirebaseDatabase.getInstance().getReference(Common.driver_tbl);
         GeoFire gf = new GeoFire(driverLocation);
 
-        GeoQuery geoQuery = gf.queryAtLocation(new GeoLocation(originLocation.getLatitude(), originLocation.getLongitude()), Distancia);
+        GeoQuery geoQuery = gf.queryAtLocation(new GeoLocation(Common.MyLocation.getLatitude(), Common.MyLocation.getLongitude()), Distancia);
         geoQuery.removeAllListeners();
         geoQuery.addGeoQueryEventListener(new GeoQueryEventListener() {
             @Override
@@ -424,7 +437,7 @@ public class HomeBox extends AppCompatActivity implements
                                 mapboxMap.addMarker(new MarkerOptions()
                                         .position(new LatLng(location.latitude, location.longitude))
                                         .title(rider.getName())
-                                        .snippet(rider.getPhone())
+                                        .snippet("Tel: "+rider.getPhone())
                                         .icon(icon));
 
                             }
@@ -473,12 +486,12 @@ public class HomeBox extends AppCompatActivity implements
         mapboxMap.getUiSettings().setLogoEnabled(false);
         mapboxMap.getUiSettings().setTiltGesturesEnabled(false);
         mapboxMap.getUiSettings().setRotateGesturesEnabled(false);
-        displayLocation();
     }
 
     private void displayLocation() {
 
-        if (originLocation != null) {
+        if (Common.MyLocation != null) {
+
 
             //Sistema de precencia
             DriversAvailable = FirebaseDatabase.getInstance().getReference(Common.driver_tbl);
@@ -494,23 +507,7 @@ public class HomeBox extends AppCompatActivity implements
                 }
             });
 
-            //añadir marcador marker
-            if (mUserMarker != null) {
-                mUserMarker.remove();
-            }
-            mUserMarker = mapboxMap.addMarker(new MarkerOptions()
-                    .position(new LatLng(originLocation.getLatitude(), originLocation.getLongitude())));
-
-            CameraPosition position = new CameraPosition.Builder()
-                    .target(new LatLng(originLocation.getLatitude(), originLocation.getLongitude())) // Sets the new camera position
-                    .zoom(15) // Sets the zoom to level 10
-                    .tilt(20) // Set the camera tilt to 20 degrees
-                    .build(); // Builds the CameraPosition object from the builder
-
-            mapboxMap.animateCamera(CameraUpdateFactory.newCameraPosition(position));
-
             LoadAllAvailableDrivers();
-
 
         } else {
             Log.d("ERROR", "No se puede obtener la localisacion.");
@@ -554,7 +551,7 @@ public class HomeBox extends AppCompatActivity implements
 
         Location lastLocation = locationEngine.getLastLocation();
         if (lastLocation != null) {
-            originLocation = lastLocation;
+            Common.MyLocation = lastLocation;
         } else {
             locationEngine.addLocationEngineListener(this);
         }
@@ -682,66 +679,37 @@ public class HomeBox extends AppCompatActivity implements
     @SuppressWarnings("MissingPermission")
     public void onConnected() {
         locationEngine.requestLocationUpdates();
-        if (originLocation != null) {
-            displayLocation();
-        }
     }
 
     @Override
     public void onLocationChanged(Location location) {
         if (location != null) {
-            originLocation = location;
+            Common.MyLocation = location;
             displayLocation();
-            getLocation();
+            try {
+                getLocation();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
         }
     }
 
 
     //////////////////////////// MIOS
 
-    private void getLocation() {
+    private void getLocation() throws IOException {
 
-        String requestApi = null;
-        try {
+        double latitude = Common.MyLocation.getLatitude();
+        double longitude = Common.MyLocation.getLongitude();
 
-            requestApi = "https://api.mapbox.com/geocoding/v5/mapbox.places/" +
-                    originLocation.getLongitude() + "," + originLocation.getLatitude() +
-                    ".json?" +
-                    "access_token=" + getResources().getString(R.string.access_token);
+        List<Address> addresses;
+        geocoder = new Geocoder(this, Locale.getDefault());
 
-            Log.d("vencolsoft", requestApi); //print url for debug
+        addresses = geocoder.getFromLocation(latitude, longitude, 1);
 
-            mGetGson.getPath(requestApi)
-                    .enqueue(new Callback<String>() {
-                        @Override
-                        public void onResponse(Call<String> call, Response<String> response) {
+        String txtLocationn = addresses.get(0).getAddressLine(0);
 
-                            try {
-                                JSONObject jsonObject = new JSONObject(response.body().toString());
-
-                                JSONArray features = jsonObject.getJSONArray("features");
-
-                                JSONObject object = features.getJSONObject(0);
-
-                                JSONObject properties = object.getJSONObject("properties");
-
-//                                Get Address
-                                String address = properties.getString("address");
-                                txtLocation.setText(address);
-
-                            } catch (JSONException e) {
-                                e.printStackTrace();
-                            }
-                        }
-
-                        @Override
-                        public void onFailure(Call<String> call, Throwable t) {
-                            Toast.makeText(c, "" + t.getLocalizedMessage(), Toast.LENGTH_SHORT).show();
-                        }
-                    });
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+        txtLocation.setText(txtLocationn);
     }
 
     private void logout() {
