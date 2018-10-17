@@ -13,5 +13,5 @@
     <string name="access_token">pk.eyJ1IjoiY2VzYXJhbmRyZXMxMjMiLCJhIjoiY2ptcDVnNXE2MWJ2ZTNxanBqOTVmZ3JtbyJ9.uTIW5FJw3xbWqPUTWO0AJQ</string>
     <string name="Google_Directions_key">AIzaSyB-CQThr1FjY4siOu-JPWsRSYulaYyIvVw</string>
 
-    <string name="solicitar">Buscar Deli.</string>
+    <string name="Buscar">Buscar Deli.</string>
 </resources>

@@ -18,6 +18,9 @@ public class Common {
 
     public static Location MyLocation =  null;
 
+    public static boolean isDriverFound = false;
+    public static boolean CuandoEncuentra = false;
+
 
     public static final String fcmURL = "https://fcm.googleapis.com/";
     public static IFCMService getFCMService()

@@ -1,24 +1,30 @@
 package com.vecolsoft.deligo.Activitys;
 
+import android.Manifest;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.ActivityInfo;
+import android.content.pm.PackageManager;
 import android.location.Address;
 import android.location.Geocoder;
 import android.location.Location;
 import android.location.LocationManager;
+import android.net.Uri;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
+import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.AppCompatButton;
+import android.support.v7.widget.CardView;
 import android.support.v7.widget.Toolbar;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.ImageButton;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -64,7 +70,6 @@ import com.vecolsoft.deligo.Utils.InternetConnection;
 import com.vecolsoft.deligo.Utils.Utils;
 
 import java.io.IOException;
-import java.util.ConcurrentModificationException;
 import java.util.List;
 import java.util.Locale;
 
@@ -107,14 +112,26 @@ public class HomeBox extends AppCompatActivity implements
     /////////////////////////////////
 
     //ELEMENTOS
-    private AppCompatButton btnSolicitarDeli;
+    private static AppCompatButton btnSolicitarDeli;
     private TextView txtLocation;
 
-    boolean isDriverFound = false;
+    //elementos del cardview del conductor
+    static CardView cdw_conductor;
+    private CircleImageView img_imagen_conductor;
+    private TextView txv_nombre_conductor;
+    private TextView txv_telefono_conductor;
+    private TextView txv_rango_conductor;
+    private TextView txv_realisadas_conductor;
+    private ImageButton imb_cancelar_conductor;
+
+
     String DriverId = "";
     int Radius = 1; //Radio de 1 Kilometro(s)
     int Distancia = 1; //
     private static final int Limite = 3;
+
+    private double DriverLat;
+    private double DriverLng;
 
     //enviar alerta
     IFCMService mService;
@@ -179,6 +196,21 @@ public class HomeBox extends AppCompatActivity implements
         //location TextView
         txtLocation = (TextView) findViewById(R.id.txtLocation);
 
+        //cardviewConductor
+        cdw_conductor = (CardView) findViewById(R.id.conductor);
+        img_imagen_conductor = (CircleImageView) findViewById(R.id.img_perfil_conductor);
+        txv_nombre_conductor = (TextView) findViewById(R.id.id_conductor);
+        txv_telefono_conductor = (TextView) findViewById(R.id.telefono_conductor);
+        txv_rango_conductor = (TextView) findViewById(R.id.rango_conductor);
+        txv_realisadas_conductor = (TextView) findViewById(R.id.realisadas_conductor);
+        imb_cancelar_conductor = (ImageButton) findViewById(R.id.cancelar_btn);
+        imb_cancelar_conductor.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Cancelar();
+            }
+        });
+
 
         //BotonSolicitar
         btnSolicitarDeli = (AppCompatButton) findViewById(R.id.btnSolicitarDeli);
@@ -186,7 +218,7 @@ public class HomeBox extends AppCompatActivity implements
             @Override
             public void onClick(View v) {
 
-                if (!isDriverFound) {
+                if (!Common.isDriverFound) {
                     SolicitarDeli(FirebaseAuth.getInstance().getCurrentUser().getUid());
                 } else {
                     SendRequesToDriver(DriverId);
@@ -315,7 +347,10 @@ public class HomeBox extends AppCompatActivity implements
                 new GeoFire.CompletionListener() {
                     @Override
                     public void onComplete(String key, DatabaseError error) {
+
                     }
+
+
                 });
 
         mUserMarker.remove();
@@ -323,9 +358,11 @@ public class HomeBox extends AppCompatActivity implements
                 .position(new LatLng(latitude, longitude))
                 .title("Recojer aqui"));
 
-        mapboxMap.selectMarker(mUserMarker);
+        if (Common.isDriverFound) {
+            mapboxMap.selectMarker(mUserMarker);
+        }
 
-        btnSolicitarDeli.setText("obteniendo Deli");
+        btnSolicitarDeli.setText("Obteniendo Deli...");
 
         BuscarConductor();
 
@@ -342,15 +379,29 @@ public class HomeBox extends AppCompatActivity implements
             public void onKeyEntered(String key, GeoLocation location) {
                 // Si encuentra
 
-                if (!isDriverFound) {
+                if (!Common.isDriverFound) {
 
-                    isDriverFound = true;
+                    Common.isDriverFound = true;
                     DriverId = key;
                     btnSolicitarDeli.setText("llamar deli");
+
+                    cdw_conductor.setVisibility(View.VISIBLE);
+                    setDataConductor(geoQuery);
                     Toast.makeText(HomeBox.this, "Encontrado", Toast.LENGTH_SHORT).show();
 
-                    //animar camara a 2 puntos
-                    //setCameraPosition();
+                    DriverLat = location.latitude;
+                    DriverLng = location.longitude;
+                    Common.CuandoEncuentra = true;
+                    //animar camara a conductor
+                    CameraPosition position = new CameraPosition.Builder()
+                            .target(new LatLng(location.latitude, location.longitude)) // Sets the new camera position
+                            .zoom(15) // Sets the zoom to level 10
+                            .tilt(20) // Set the camera tilt to 20 degrees
+                            .build(); // Builds the CameraPosition object from the builder
+
+                    mapboxMap.animateCamera(CameraUpdateFactory.newCameraPosition(position));
+
+
 
                 }
 
@@ -372,10 +423,17 @@ public class HomeBox extends AppCompatActivity implements
 
                 //Si no encuentra conductores incrementa la distancia
 
-                if (!isDriverFound) {
-
+                if (!Common.isDriverFound && Radius < Limite) {
                     Radius++;
                     BuscarConductor();
+
+                } else {
+
+                    if (!Common.isDriverFound) {
+                        Toast.makeText(HomeBox.this, "No hay conductores cerca de ti.", Toast.LENGTH_SHORT).show();
+                        btnSolicitarDeli.setText(R.string.Buscar);
+                        geoQuery.removeAllListeners();
+                    }
                 }
 
             }
@@ -388,28 +446,69 @@ public class HomeBox extends AppCompatActivity implements
 
     }
 
+    private static void removeSolicitud() {
+    }
+
+    private void setDataConductor(GeoQuery geoQuery) {
+
+        geoQuery.addGeoQueryEventListener(new GeoQueryEventListener() {
+            @Override
+            public void onKeyEntered(String key, GeoLocation location) {
+                //Use key to get email from table Drivers
+                DatabaseReference ref = FirebaseDatabase.getInstance().getReference(Common.user_driver_tbl);
+                ref.child(key).addListenerForSingleValueEvent(new ValueEventListener() {
+                    @Override
+                    public void onDataChange(DataSnapshot dataSnapshot) {
+
+                        Rider rider = dataSnapshot.getValue(Rider.class);
+
+                        //Add driver  data to card
+                        txv_nombre_conductor.setText(rider.getName());
+                        txv_telefono_conductor.setText(rider.getPhone());
+
+                    }
+
+                    @Override
+                    public void onCancelled(DatabaseError databaseError) {
+
+                    }
+                });
+            }
+
+            @Override
+            public void onKeyExited(String key) {
+
+            }
+
+            @Override
+            public void onKeyMoved(String key, GeoLocation location) {
+
+            }
+
+            @Override
+            public void onGeoQueryReady() {
+
+            }
+
+            @Override
+            public void onGeoQueryError(DatabaseError error) {
+
+            }
+        });
+
+    }
+
+
     private void LoadAllAvailableDrivers() {
 
         if (mapboxMap != null) {
             mapboxMap.clear();
-
-        //añadir marcador de mi localisacion
-        //Ni puta idea por que tiene que ser aqui pero bueh!! hay vamos :*
-        if (mUserMarker != null) {
-            mUserMarker.remove();
+            mUserMarker = mapboxMap.addMarker(new MarkerOptions()
+                    .position(new LatLng(Common.MyLocation.getLatitude(), Common.MyLocation.getLongitude()))
+                    .title("Tu"));
         }
-        mUserMarker = mapboxMap.addMarker(new MarkerOptions()
-                .position(new LatLng(Common.MyLocation.getLatitude(), Common.MyLocation.getLongitude()))
-                .title("Tu"));
 
-        CameraPosition position = new CameraPosition.Builder()
-                .target(new LatLng(mUserMarker.getPosition().getLatitude(),mUserMarker.getPosition().getLongitude())) // Sets the new camera position
-                .zoom(15) // Sets the zoom to level 10
-                .tilt(20) // Set the camera tilt to 20 degrees
-                .build(); // Builds the CameraPosition object from the builder
 
-        mapboxMap.animateCamera(CameraUpdateFactory.newCameraPosition(position));
-        }
         // leer todos los conductores avilitados en un radio de 3 km.
 
         DatabaseReference driverLocation = FirebaseDatabase.getInstance().getReference(Common.driver_tbl);
@@ -437,7 +536,7 @@ public class HomeBox extends AppCompatActivity implements
                                 mapboxMap.addMarker(new MarkerOptions()
                                         .position(new LatLng(location.latitude, location.longitude))
                                         .title(rider.getName())
-                                        .snippet("Tel: "+rider.getPhone())
+                                        .snippet("Tel: " + rider.getPhone())
                                         .icon(icon));
 
                             }
@@ -508,6 +607,12 @@ public class HomeBox extends AppCompatActivity implements
             });
 
             LoadAllAvailableDrivers();
+
+            if (Common.MyLocation != null) {
+                if (!Common.CuandoEncuentra) {
+                    enfocateLocation();
+                }
+            }
 
         } else {
             Log.d("ERROR", "No se puede obtener la localisacion.");
@@ -762,6 +867,26 @@ public class HomeBox extends AppCompatActivity implements
             Toast.makeText(this, "Vuelve a presionar para salir", Toast.LENGTH_SHORT).show();
         }
         tiempoPrimerClick = System.currentTimeMillis();
+    }
+
+    public static void Cancelar() {
+        Common.isDriverFound = false;
+        Common.CuandoEncuentra = false;
+        cdw_conductor.setVisibility(View.INVISIBLE);
+        btnSolicitarDeli.setText(R.string.Buscar);
+        removeSolicitud();
+
+    }
+
+    private void enfocateLocation() {
+
+        CameraPosition position = new CameraPosition.Builder()
+                .target(new LatLng(Common.MyLocation.getLatitude(), Common.MyLocation.getLongitude())) // Sets the new camera position
+                .zoom(15) // Sets the zoom to level 10
+                .tilt(20) // Set the camera tilt to 20 degrees
+                .build(); // Builds the CameraPosition object from the builder
+        mapboxMap.animateCamera(CameraUpdateFactory.newCameraPosition(position));
+
     }
 
 }

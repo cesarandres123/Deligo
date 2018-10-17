@@ -7,12 +7,11 @@ import android.content.Intent;
 import android.os.Handler;
 import android.os.Looper;
 import android.support.v4.app.NotificationCompat;
-import android.support.v4.app.NotificationManagerCompat;
 import android.widget.Toast;
 
 import com.google.firebase.messaging.FirebaseMessagingService;
 import com.google.firebase.messaging.RemoteMessage;
-import com.vecolsoft.deligo.Modelo.Notification;
+import com.vecolsoft.deligo.Activitys.HomeBox;
 import com.vecolsoft.deligo.R;
 
 public class MyFirebaseMessaging extends FirebaseMessagingService {
@@ -25,6 +24,7 @@ public class MyFirebaseMessaging extends FirebaseMessagingService {
             handler.post(new Runnable() {
                 @Override
                 public void run() {
+                    HomeBox.Cancelar();
                     Toast.makeText(MyFirebaseMessaging.this, "" +remoteMessage.getNotification().getBody() , Toast.LENGTH_SHORT).show();
                 }
             });
