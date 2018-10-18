@@ -402,7 +402,6 @@ public class HomeBox extends AppCompatActivity implements
                     mapboxMap.animateCamera(CameraUpdateFactory.newCameraPosition(position));
 
 
-
                 }
 
 
@@ -880,13 +879,16 @@ public class HomeBox extends AppCompatActivity implements
 
     private void enfocateLocation() {
 
-        CameraPosition position = new CameraPosition.Builder()
-                .target(new LatLng(Common.MyLocation.getLatitude(), Common.MyLocation.getLongitude())) // Sets the new camera position
-                .zoom(15) // Sets the zoom to level 10
-                .tilt(20) // Set the camera tilt to 20 degrees
-                .build(); // Builds the CameraPosition object from the builder
-        mapboxMap.animateCamera(CameraUpdateFactory.newCameraPosition(position));
+        if (Common.MyLocation != null) {
+            if (mapboxMap != null) {
+                CameraPosition position = new CameraPosition.Builder()
+                        .target(new LatLng(Common.MyLocation.getLatitude(), Common.MyLocation.getLongitude())) // Sets the new camera position
+                        .zoom(15) // Sets the zoom to level 10
+                        .tilt(20) // Set the camera tilt to 20 degrees
+                        .build(); // Builds the CameraPosition object from the builder
 
+                mapboxMap.animateCamera(CameraUpdateFactory.newCameraPosition(position));
+            }
+        }
     }
-
 }
