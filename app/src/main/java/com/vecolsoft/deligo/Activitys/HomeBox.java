@@ -480,8 +480,7 @@ public class HomeBox extends AppCompatActivity implements
     private static void removeSolicitud() {
 
         mDatabase = FirebaseDatabase.getInstance().getReference(Common.pickup_request_tbl);
-        mDatabase.child(FirebaseAuth.getInstance().getCurrentUser().getUid());
-        mDatabase.removeValue();
+        mDatabase.child(FirebaseAuth.getInstance().getCurrentUser().getUid()).removeValue();
 
     }
 
