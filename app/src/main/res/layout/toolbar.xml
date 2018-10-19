@@ -50,7 +50,7 @@
                     android:layout_centerVertical="true"
                     android:layout_gravity="center"
                     android:padding="10dp"
-                    android:text="ANDRES GONZALEZ"
+                    android:text=""
                     android:textColor="@color/blanco"
                     android:textSize="16sp"
                     android:textStyle="bold"

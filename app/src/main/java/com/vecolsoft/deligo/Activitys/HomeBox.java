@@ -109,6 +109,7 @@ public class HomeBox extends AppCompatActivity implements
     private Toolbar toolbar;
     private CircleImageView circleImageView;
     private RelativeLayout perfil;
+    private TextView nombre;
     /////////////////////////////////
 
     //ELEMENTOS
@@ -149,6 +150,9 @@ public class HomeBox extends AppCompatActivity implements
     private long tiempoPrimerClick;
 
 
+    private static DatabaseReference mDatabase;
+
+
     @Override
     protected void attachBaseContext(Context newBase) {
         super.attachBaseContext(CalligraphyContextWrapper.wrap(newBase));
@@ -168,6 +172,8 @@ public class HomeBox extends AppCompatActivity implements
                 .build());
 
         setContentView(R.layout.activity_home_box);
+
+
 
         mService = Common.getFCMService();
 
@@ -192,6 +198,24 @@ public class HomeBox extends AppCompatActivity implements
         //Toolbar
         toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
+        nombre = (TextView) findViewById(R.id.tvNombre);
+
+        //cambiar nombre i imagen
+        mDatabase = FirebaseDatabase.getInstance().getReference(Common.user_rider_tbl);
+        mDatabase.child(FirebaseAuth.getInstance().getCurrentUser().getUid())
+                .addValueEventListener(new ValueEventListener() {
+                    @Override
+                    public void onDataChange(DataSnapshot dataSnapshot) {
+                        Rider rider = dataSnapshot.getValue(Rider.class);
+
+                        nombre.setText(rider.getName());
+                    }
+
+                    @Override
+                    public void onCancelled(DatabaseError databaseError) {
+
+                    }
+                });
 
         //location TextView
         txtLocation = (TextView) findViewById(R.id.txtLocation);
@@ -349,11 +373,19 @@ public class HomeBox extends AppCompatActivity implements
                     public void onComplete(String key, DatabaseError error) {
 
                     }
-
-
                 });
 
-        mUserMarker.remove();
+        mGeoFire.removeLocation(FirebaseAuth.getInstance().getCurrentUser().getUid(),
+                new GeoFire.CompletionListener() {
+                    @Override
+                    public void onComplete(String key, DatabaseError error) {
+
+                    }
+                });
+
+        if (mUserMarker != null) {
+            mUserMarker.remove();
+        }
         mUserMarker = mapboxMap.addMarker(new MarkerOptions()
                 .position(new LatLng(latitude, longitude))
                 .title("Recojer aqui"));
@@ -392,6 +424,7 @@ public class HomeBox extends AppCompatActivity implements
                     DriverLat = location.latitude;
                     DriverLng = location.longitude;
                     Common.CuandoEncuentra = true;
+
                     //animar camara a conductor
                     CameraPosition position = new CameraPosition.Builder()
                             .target(new LatLng(location.latitude, location.longitude)) // Sets the new camera position
@@ -401,10 +434,7 @@ public class HomeBox extends AppCompatActivity implements
 
                     mapboxMap.animateCamera(CameraUpdateFactory.newCameraPosition(position));
 
-
                 }
-
-
             }
 
             @Override
@@ -431,7 +461,9 @@ public class HomeBox extends AppCompatActivity implements
                     if (!Common.isDriverFound) {
                         Toast.makeText(HomeBox.this, "No hay conductores cerca de ti.", Toast.LENGTH_SHORT).show();
                         btnSolicitarDeli.setText(R.string.Buscar);
+                        removeSolicitud();
                         geoQuery.removeAllListeners();
+
                     }
                 }
 
@@ -446,6 +478,11 @@ public class HomeBox extends AppCompatActivity implements
     }
 
     private static void removeSolicitud() {
+
+        mDatabase = FirebaseDatabase.getInstance().getReference(Common.pickup_request_tbl);
+        mDatabase.child(FirebaseAuth.getInstance().getCurrentUser().getUid());
+        mDatabase.removeValue();
+
     }
 
     private void setDataConductor(GeoQuery geoQuery) {
@@ -579,6 +616,7 @@ public class HomeBox extends AppCompatActivity implements
 
     @Override
     public void onMapReady(MapboxMap mapboxMap) {
+
         this.mapboxMap = mapboxMap;
         mapboxMap.getUiSettings().setAttributionEnabled(false);
         mapboxMap.getUiSettings().setLogoEnabled(false);
