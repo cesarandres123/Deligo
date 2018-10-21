@@ -1,34 +1,33 @@
 package com.vecolsoft.deligo.Activitys;
 
-import android.Manifest;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.ActivityInfo;
-import android.content.pm.PackageManager;
 import android.location.Address;
 import android.location.Geocoder;
 import android.location.Location;
 import android.location.LocationManager;
-import android.net.Uri;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
-import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.AppCompatButton;
 import android.support.v7.widget.CardView;
 import android.support.v7.widget.Toolbar;
+import android.text.TextUtils;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.ImageButton;
+import android.widget.ProgressBar;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.bumptech.glide.Glide;
 import com.firebase.geofire.GeoFire;
 import com.firebase.geofire.GeoLocation;
 import com.firebase.geofire.GeoQuery;
@@ -85,8 +84,6 @@ public class HomeBox extends AppCompatActivity implements
         LocationEngineListener,
         PermissionsListener {
 
-    private SharedPreferences prefs;
-
     // variables for adding location layer
     private MapboxMap mapboxMap;
     private PermissionsManager permissionsManager;
@@ -115,6 +112,7 @@ public class HomeBox extends AppCompatActivity implements
     //ELEMENTOS
     private static AppCompatButton btnSolicitarDeli;
     private TextView txtLocation;
+    private static ProgressBar progressBar;
 
     //elementos del cardview del conductor
     static CardView cdw_conductor;
@@ -124,6 +122,13 @@ public class HomeBox extends AppCompatActivity implements
     private TextView txv_rango_conductor;
     private TextView txv_realisadas_conductor;
     private ImageButton imb_cancelar_conductor;
+
+    //elementos del cardview del conductor2
+    static CardView cdw_conductor2;
+    private CircleImageView img_imagen_conductor2;
+    private TextView txv_nombre_conductor2;
+    private TextView txv_info_conductor2;
+    private ImageButton imb_cancelar_conductor2;
 
 
     String DriverId = "";
@@ -149,8 +154,8 @@ public class HomeBox extends AppCompatActivity implements
     private static final int INTERVALO = 2000; //2 segundos para salir
     private long tiempoPrimerClick;
 
-
-    private static DatabaseReference mDatabase;
+    // eleiminar pickuprequest database
+    private static DatabaseReference mdatabaseRemove;
 
 
     @Override
@@ -174,11 +179,7 @@ public class HomeBox extends AppCompatActivity implements
         setContentView(R.layout.activity_home_box);
 
 
-
         mService = Common.getFCMService();
-
-        prefs = getSharedPreferences("datos", Context.MODE_PRIVATE);
-
 
         mapView = (MapView) findViewById(R.id.mapViewBox);
         mapView.onCreate(savedInstanceState);
@@ -191,7 +192,6 @@ public class HomeBox extends AppCompatActivity implements
             public void onClick(View v) {
 
                 startActivity(new Intent(HomeBox.this, PerfilActivity.class));
-                //overridePendingTransition( R.anim.slide_in_up, R.anim.slide_out_up );
             }
         });
 
@@ -199,26 +199,22 @@ public class HomeBox extends AppCompatActivity implements
         toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
         nombre = (TextView) findViewById(R.id.tvNombre);
+        nombre.setText(Common.CurrentUser.getName());
+        circleImageView = (CircleImageView) findViewById(R.id.profile_image);
 
-        //cambiar nombre i imagen
-        mDatabase = FirebaseDatabase.getInstance().getReference(Common.user_rider_tbl);
-        mDatabase.child(FirebaseAuth.getInstance().getCurrentUser().getUid())
-                .addValueEventListener(new ValueEventListener() {
-                    @Override
-                    public void onDataChange(DataSnapshot dataSnapshot) {
-                        Rider rider = dataSnapshot.getValue(Rider.class);
+        //load Avatar
+        if (Common.CurrentUser.getAvatarUrl() != null && !TextUtils.isEmpty(Common.CurrentUser.getAvatarUrl())) {
 
-                        nombre.setText(rider.getName());
-                    }
-
-                    @Override
-                    public void onCancelled(DatabaseError databaseError) {
-
-                    }
-                });
+            Glide.with(this)
+                    .load(Common.CurrentUser.getAvatarUrl())
+                    .into(circleImageView);
+        }
 
         //location TextView
         txtLocation = (TextView) findViewById(R.id.txtLocation);
+
+        //progressbar
+        progressBar = (ProgressBar) findViewById(R.id.progressBar2);
 
         //cardviewConductor
         cdw_conductor = (CardView) findViewById(R.id.conductor);
@@ -231,7 +227,20 @@ public class HomeBox extends AppCompatActivity implements
         imb_cancelar_conductor.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                Cancelar();
+                Cancelado();
+            }
+        });
+
+        //cardviewConductor2
+        cdw_conductor2 = (CardView) findViewById(R.id.conductor2);
+        img_imagen_conductor2 = (CircleImageView) findViewById(R.id.img_perfil_conductor2);
+        txv_nombre_conductor2 = (TextView) findViewById(R.id.id_conductor2);
+        txv_info_conductor2 = (TextView) findViewById(R.id.info_conductor);
+        imb_cancelar_conductor2 = (ImageButton) findViewById(R.id.cancelar_btn2);
+        imb_cancelar_conductor.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Cancelado();
             }
         });
 
@@ -251,60 +260,8 @@ public class HomeBox extends AppCompatActivity implements
         });
 
         CheckGPSStatus();
-        updateFirebaseToken();
+        verificarinternet();
 
-
-        //verificar internet
-        if (InternetConnection.checkConnection(c)) {
-            // Its Available...
-
-            //verificar si hay internet con ping
-            if (InternetConnection.internetIsConnected(c)) {
-                enableLocationPlugin();
-                connected = true;
-
-
-            } else {
-
-                AlertDialog.Builder dialogo = new AlertDialog.Builder(this);
-                dialogo.setTitle("Error de coneccion.");
-                dialogo.setMessage("Fue imposible establecer una coneccion a internet");
-                dialogo.setCancelable(false);
-                dialogo.setIcon(R.drawable.ic_error);
-
-                dialogo.setPositiveButton("Reintentar", new DialogInterface.OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface dialog, int which) {
-                        finish();
-                        startActivity(getIntent());
-                    }
-                });
-
-                dialogo.show();
-
-            }
-
-        } else {
-            // Not Available...
-            connected = false;
-
-            AlertDialog.Builder dialogo = new AlertDialog.Builder(this);
-            dialogo.setTitle("Error de coneccion.");
-            dialogo.setMessage("Fue imposible establecer una coneccion a internet");
-            dialogo.setCancelable(false);
-            dialogo.setIcon(R.drawable.ic_error);
-
-            dialogo.setPositiveButton("Reintentar", new DialogInterface.OnClickListener() {
-                @Override
-                public void onClick(DialogInterface dialog, int which) {
-                    finish();
-                    startActivity(getIntent());
-                }
-            });
-
-            dialogo.show();
-
-        }
     }
 
     private void updateFirebaseToken() {
@@ -339,8 +296,12 @@ public class HomeBox extends AppCompatActivity implements
                                         public void onResponse(Call<FCMResponse> call, Response<FCMResponse> response) {
                                             if (response.body().success == 1) {
                                                 Toast.makeText(HomeBox.this, "Solicitud enviada.", Toast.LENGTH_SHORT).show();
+                                                btnSolicitarDeli.setText("Esperando respuesta...");
+                                                progressBar.setVisibility(View.VISIBLE);
+
                                             } else {
                                                 Toast.makeText(HomeBox.this, "Error de solicitud.", Toast.LENGTH_SHORT).show();
+                                                btnSolicitarDeli.setText(R.string.Buscar);
                                             }
                                         }
 
@@ -367,15 +328,8 @@ public class HomeBox extends AppCompatActivity implements
 
         DatabaseReference dbRequest = FirebaseDatabase.getInstance().getReference(Common.pickup_request_tbl);
         GeoFire mGeoFire = new GeoFire(dbRequest);
+
         mGeoFire.setLocation(uid, new GeoLocation(latitude, longitude),
-                new GeoFire.CompletionListener() {
-                    @Override
-                    public void onComplete(String key, DatabaseError error) {
-
-                    }
-                });
-
-        mGeoFire.removeLocation(FirebaseAuth.getInstance().getCurrentUser().getUid(),
                 new GeoFire.CompletionListener() {
                     @Override
                     public void onComplete(String key, DatabaseError error) {
@@ -401,9 +355,9 @@ public class HomeBox extends AppCompatActivity implements
     }
 
     private void BuscarConductor() {
+
         DatabaseReference drivers = FirebaseDatabase.getInstance().getReference(Common.driver_tbl);
         GeoFire gfDrivers = new GeoFire(drivers);
-
         GeoQuery geoQuery = gfDrivers.queryAtLocation(new GeoLocation(Common.MyLocation.getLatitude(), Common.MyLocation.getLongitude()), Radius);
         geoQuery.removeAllListeners();
         geoQuery.addGeoQueryEventListener(new GeoQueryEventListener() {
@@ -463,7 +417,7 @@ public class HomeBox extends AppCompatActivity implements
                         btnSolicitarDeli.setText(R.string.Buscar);
                         removeSolicitud();
                         geoQuery.removeAllListeners();
-
+                        //gfDrivers.removeLocation(DriverId);
                     }
                 }
 
@@ -476,63 +430,6 @@ public class HomeBox extends AppCompatActivity implements
         });
 
     }
-
-    private static void removeSolicitud() {
-
-        mDatabase = FirebaseDatabase.getInstance().getReference(Common.pickup_request_tbl);
-        mDatabase.child(FirebaseAuth.getInstance().getCurrentUser().getUid()).removeValue();
-
-    }
-
-    private void setDataConductor(GeoQuery geoQuery) {
-
-        geoQuery.addGeoQueryEventListener(new GeoQueryEventListener() {
-            @Override
-            public void onKeyEntered(String key, GeoLocation location) {
-                //Use key to get email from table Drivers
-                DatabaseReference ref = FirebaseDatabase.getInstance().getReference(Common.user_driver_tbl);
-                ref.child(key).addListenerForSingleValueEvent(new ValueEventListener() {
-                    @Override
-                    public void onDataChange(DataSnapshot dataSnapshot) {
-
-                        Rider rider = dataSnapshot.getValue(Rider.class);
-
-                        //Add driver  data to card
-                        txv_nombre_conductor.setText(rider.getName());
-                        txv_telefono_conductor.setText(rider.getPhone());
-
-                    }
-
-                    @Override
-                    public void onCancelled(DatabaseError databaseError) {
-
-                    }
-                });
-            }
-
-            @Override
-            public void onKeyExited(String key) {
-
-            }
-
-            @Override
-            public void onKeyMoved(String key, GeoLocation location) {
-
-            }
-
-            @Override
-            public void onGeoQueryReady() {
-
-            }
-
-            @Override
-            public void onGeoQueryError(DatabaseError error) {
-
-            }
-        });
-
-    }
-
 
     private void LoadAllAvailableDrivers() {
 
@@ -567,12 +464,16 @@ public class HomeBox extends AppCompatActivity implements
                                 IconFactory iconFactory = IconFactory.getInstance(HomeBox.this);
                                 Icon icon = iconFactory.fromResource(R.drawable.circlemo);
 
-                                //Add driver to map
-                                mapboxMap.addMarker(new MarkerOptions()
-                                        .position(new LatLng(location.latitude, location.longitude))
-                                        .title(rider.getName())
-                                        .snippet("Tel: " + rider.getPhone())
-                                        .icon(icon));
+                                if (mapboxMap != null) {
+
+                                    //Add driver to map
+                                    mapboxMap.addMarker(new MarkerOptions()
+                                            .position(new LatLng(location.latitude, location.longitude))
+                                            .title(rider.getName())
+                                            .snippet("Tel: " + rider.getPhone())
+                                            .icon(icon));
+                                }
+
 
                             }
 
@@ -722,11 +623,10 @@ public class HomeBox extends AppCompatActivity implements
                 dialogo.setPositiveButton("Cerrar", new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
-                        Utils.removesharedpreferencies(prefs);
                         logout();
                     }
                 });
-                dialogo.setNegativeButton("Cancelar", new DialogInterface.OnClickListener() {
+                dialogo.setNegativeButton("Cancelado", new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
                         dialog.dismiss();
@@ -854,9 +754,12 @@ public class HomeBox extends AppCompatActivity implements
     }
 
     private void logout() {
+
+        FirebaseAuth.getInstance().signOut();
         Intent intent = new Intent(this, MainActivity.class);
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
         startActivity(intent);
+        finish();
     }
 
     public void CheckGPSStatus() {
@@ -865,6 +768,61 @@ public class HomeBox extends AppCompatActivity implements
         locationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
         if (!locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
             AlertNoGps();
+        }
+    }
+
+    private void verificarinternet() {
+        //verificar internet
+        if (InternetConnection.checkConnection(c)) {
+            // Its Available...
+
+            //verificar si hay internet con ping
+            if (InternetConnection.internetIsConnected(c)) {
+                enableLocationPlugin();
+                connected = true;
+                updateFirebaseToken();
+
+
+            } else {
+
+                AlertDialog.Builder dialogo = new AlertDialog.Builder(this);
+                dialogo.setTitle("Error de coneccion.");
+                dialogo.setMessage("Fue imposible establecer una coneccion a internet");
+                dialogo.setCancelable(false);
+                dialogo.setIcon(R.drawable.ic_error);
+
+                dialogo.setPositiveButton("Reintentar", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        finish();
+                        startActivity(getIntent());
+                    }
+                });
+
+                dialogo.show();
+
+            }
+
+        } else {
+            // Not Available...
+            connected = false;
+
+            AlertDialog.Builder dialogo = new AlertDialog.Builder(this);
+            dialogo.setTitle("Error de coneccion.");
+            dialogo.setMessage("Fue imposible establecer una coneccion a internet");
+            dialogo.setCancelable(false);
+            dialogo.setIcon(R.drawable.ic_error);
+
+            dialogo.setPositiveButton("Reintentar", new DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(DialogInterface dialog, int which) {
+                    finish();
+                    startActivity(getIntent());
+                }
+            });
+
+            dialogo.show();
+
         }
     }
 
@@ -891,6 +849,62 @@ public class HomeBox extends AppCompatActivity implements
         dialogo.show();
     }
 
+    private static void removeSolicitud() {
+
+        mdatabaseRemove = FirebaseDatabase.getInstance().getReference(Common.pickup_request_tbl);
+        mdatabaseRemove.child(FirebaseAuth.getInstance().getCurrentUser().getUid()).removeValue();
+
+    }
+
+    private void setDataConductor(GeoQuery geoQuery) {
+
+        geoQuery.addGeoQueryEventListener(new GeoQueryEventListener() {
+            @Override
+            public void onKeyEntered(String key, GeoLocation location) {
+                //Use key to get email from table Drivers
+                DatabaseReference ref = FirebaseDatabase.getInstance().getReference(Common.user_driver_tbl);
+                ref.child(key).addListenerForSingleValueEvent(new ValueEventListener() {
+                    @Override
+                    public void onDataChange(DataSnapshot dataSnapshot) {
+
+                        Rider rider = dataSnapshot.getValue(Rider.class);
+
+                        //Add driver  data to card
+                        txv_nombre_conductor.setText(rider.getName());
+                        txv_telefono_conductor.setText(rider.getPhone());
+
+                    }
+
+                    @Override
+                    public void onCancelled(DatabaseError databaseError) {
+
+                    }
+                });
+            }
+
+            @Override
+            public void onKeyExited(String key) {
+
+            }
+
+            @Override
+            public void onKeyMoved(String key, GeoLocation location) {
+
+            }
+
+            @Override
+            public void onGeoQueryReady() {
+
+            }
+
+            @Override
+            public void onGeoQueryError(DatabaseError error) {
+
+            }
+        });
+
+    }
+
     @Override
     public void onBackPressed() {
         if (tiempoPrimerClick + INTERVALO > System.currentTimeMillis()) {
@@ -905,12 +919,32 @@ public class HomeBox extends AppCompatActivity implements
         tiempoPrimerClick = System.currentTimeMillis();
     }
 
-    public static void Cancelar() {
+    public static void Cancelado() {
+
+        progressBar.setVisibility(View.INVISIBLE);
         Common.isDriverFound = false;
         Common.CuandoEncuentra = false;
         cdw_conductor.setVisibility(View.INVISIBLE);
         btnSolicitarDeli.setText(R.string.Buscar);
         removeSolicitud();
+
+    }
+
+    public static void Aceptado() {
+
+        progressBar.setVisibility(View.INVISIBLE);
+        Common.onService = true;
+        cdw_conductor.setVisibility(View.INVISIBLE);
+        cdw_conductor2.setVisibility(View.VISIBLE);
+        btnSolicitarDeli.setVisibility(View.GONE);
+        Onservice();
+
+
+    }
+
+    private static void Onservice() {
+
+
 
     }
 

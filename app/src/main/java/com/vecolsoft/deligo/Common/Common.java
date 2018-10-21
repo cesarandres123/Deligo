@@ -20,6 +20,9 @@ public class Common {
 
     public static boolean isDriverFound = false;
     public static boolean CuandoEncuentra = false;
+    public static boolean onService = false;
+
+    public static final int PICK_IMAGE_REQUEST = 9999;
 
 
     public static final String fcmURL = "https://fcm.googleapis.com/";

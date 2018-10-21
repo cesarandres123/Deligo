@@ -29,8 +29,11 @@ import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.AuthResult;
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ValueEventListener;
 import com.leo.simplearcloader.ArcConfiguration;
 import com.leo.simplearcloader.SimpleArcDialog;
 import com.vecolsoft.deligo.Common.Common;
@@ -46,7 +49,6 @@ import uk.co.chrisjenx.calligraphy.CalligraphyContextWrapper;
 
 public class MainActivity extends AppCompatActivity {
 
-    private SharedPreferences prefs;
 
     Button btnForgpass, btnSignIn, btnRegister;
     RelativeLayout rootLayout;
@@ -79,8 +81,6 @@ public class MainActivity extends AppCompatActivity {
 
         setContentView(R.layout.activity_main);
 
-        prefs = getSharedPreferences("datos",Context.MODE_PRIVATE);
-
         //Init View
         btnSignIn = findViewById(R.id.btnSignIn);
         btnRegister = findViewById(R.id.btnRegister);
@@ -91,9 +91,6 @@ public class MainActivity extends AppCompatActivity {
         auth = FirebaseAuth.getInstance();
         db = FirebaseDatabase.getInstance();
         users = db.getReference(Common.user_rider_tbl);
-
-        //Sharepreference
-        setCredentialsifExist();
 
 
         //Eventos
@@ -165,15 +162,30 @@ public class MainActivity extends AppCompatActivity {
 
 
         //Ingresar
-
         auth.signInWithEmailAndPassword(edtEmail.getText().toString(), edtPassword.getText().toString())
                 .addOnSuccessListener(new OnSuccessListener<AuthResult>() {
                     @Override
                     public void onSuccess(AuthResult authResult) {
                         CargaDialog.dismiss();
-                        startActivity(new Intent(MainActivity.this, HomeBox.class));
-                        saveOnPreferences(edtEmail.getText().toString(),edtPassword.getText().toString());
-                        finish();
+
+                        //Fetch data and save to variable
+                        FirebaseDatabase.getInstance().getReference(Common.user_rider_tbl)
+                                .child(FirebaseAuth.getInstance().getCurrentUser().getUid())
+                                .addListenerForSingleValueEvent(new ValueEventListener() {
+                                    @Override
+                                    public void onDataChange(DataSnapshot dataSnapshot) {
+                                        //despues de asignar valor a Common.CurrentUser
+                                        Common.CurrentUser = dataSnapshot.getValue(Rider.class);
+                                        //iniciar actividad
+                                        startActivity(new Intent(MainActivity.this, HomeBox.class));
+                                        finish();
+                                    }
+
+                                    @Override
+                                    public void onCancelled(DatabaseError databaseError) {
+
+                                    }
+                                });
                     }
                 })
                 .addOnFailureListener(new OnFailureListener() {
@@ -342,7 +354,7 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        dialogo.setNegativeButton("Cancelar", new DialogInterface.OnClickListener() {
+        dialogo.setNegativeButton("Cancelado", new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialog, int which) {
                 dialog.dismiss();
@@ -411,28 +423,6 @@ public class MainActivity extends AppCompatActivity {
         });
 
         dialogo.show();
-
-    }
-
-
-    private void saveOnPreferences(String edtEmail ,String edtPassword) {
-        SharedPreferences.Editor editor = prefs.edit();
-        editor.putString("email",edtEmail);
-        editor.putString("pass",edtPassword);
-        editor.apply();
-    }
-    private void setCredentialsifExist() {
-
-        final EditText edtEmail = rootLayout.findViewById(R.id.edtEmail);
-        final EditText edtPassword = rootLayout.findViewById(R.id.edtPassword);
-
-        String email = Utils.getUserEmailPrefes(prefs);
-        String password = Utils.getUserPassPrefes(prefs);
-
-        if (!TextUtils.isEmpty(email) && !TextUtils.isEmpty(password)) {
-            edtEmail.setText(email);
-            edtPassword.setText(password);
-        }
 
     }
 

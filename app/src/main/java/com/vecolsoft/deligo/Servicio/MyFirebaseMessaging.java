@@ -24,14 +24,28 @@ public class MyFirebaseMessaging extends FirebaseMessagingService {
             handler.post(new Runnable() {
                 @Override
                 public void run() {
-                    HomeBox.Cancelar();
+                    HomeBox.Cancelado();
                     Toast.makeText(MyFirebaseMessaging.this, "" +remoteMessage.getNotification().getBody() , Toast.LENGTH_SHORT).show();
                 }
             });
-        } else if (remoteMessage.getNotification().getTitle().equals("Esta aqui!")) {
+        }
+
+        if (remoteMessage.getNotification().getTitle().equals("Aceptado")) {
+            Handler handler = new Handler(Looper.getMainLooper());
+            handler.post(new Runnable() {
+                @Override
+                public void run() {
+                    HomeBox.Aceptado();
+                    Toast.makeText(MyFirebaseMessaging.this, "" +remoteMessage.getNotification().getBody() , Toast.LENGTH_SHORT).show();
+                }
+            });
+        }
+
+        else if (remoteMessage.getNotification().getTitle().equals("Esta aqui!")) {
 
             ShowArrivedNotification(remoteMessage.getNotification().getBody());
         }
+
 
 
 

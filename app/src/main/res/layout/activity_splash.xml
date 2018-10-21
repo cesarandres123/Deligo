@@ -8,12 +8,22 @@
     android:paddingRight="16dp"
     android:paddingTop="16dp"
     tools:context="Splash.SplashActivity"
-    android:background="@color/FondoGris">
+    android:background="@color/colorPrimary">
 
-    <ImageView
-        android:layout_width="105dp"
-        android:layout_height="127dp"
-        android:layout_centerInParent="true"
-        android:src="@drawable/circlemo" />
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:gravity="center">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/deligo_logo"
+            android:textColor="@color/colorAccent"
+            android:textSize="50sp" />
+
+    </RelativeLayout>
+
+
 
 </RelativeLayout>

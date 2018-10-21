@@ -9,7 +9,7 @@ public class myapp extends Application {
     public void onCreate() {
         super.onCreate();
 
-
+        SystemClock.sleep(1000);
     }
 
 }

@@ -2,7 +2,7 @@ package com.vecolsoft.deligo.Modelo;
 
 public class Rider {
 
-    private String email,password,name,phone;
+    private String email,password,name,phone,avatarUrl;
 
     public Rider() {
     }
@@ -12,6 +12,14 @@ public class Rider {
         this.password = password;
         this.name = name;
         this.phone = phone;
+    }
+
+    public String getAvatarUrl() {
+        return avatarUrl;
+    }
+
+    public void setAvatarUrl(String avatarUrl) {
+        this.avatarUrl = avatarUrl;
     }
 
     public String getEmail() {

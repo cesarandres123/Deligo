@@ -13,19 +13,22 @@ import android.os.Bundle;
 import android.text.TextUtils;
 
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
+import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ValueEventListener;
 import com.leo.simplearcloader.ArcConfiguration;
 import com.leo.simplearcloader.SimpleArcDialog;
 import com.vecolsoft.deligo.Activitys.HomeBox;
 import com.vecolsoft.deligo.Activitys.MainActivity;
+import com.vecolsoft.deligo.Common.Common;
+import com.vecolsoft.deligo.Modelo.Rider;
 import com.vecolsoft.deligo.R;
 import com.vecolsoft.deligo.Utils.InternetConnection;
 import com.vecolsoft.deligo.Utils.Utils;
 
 public class SplashActivity extends AppCompatActivity {
 
-    private SharedPreferences prefs;
-
-    FirebaseAuth auth;
     //verificar internet
     boolean connected = false;
     //Contexto
@@ -56,55 +59,27 @@ public class SplashActivity extends AppCompatActivity {
         CargaDialog.setCancelable(false);
         CargaDialog.show();
 
-        prefs = getSharedPreferences("datos", Context.MODE_PRIVATE);
-
-        auth = FirebaseAuth.getInstance();
 
         final Intent intentMain = new Intent(this, MainActivity.class);
-        final Intent intenHome = new Intent(this, HomeBox.class);
 
         //post delay para iniciar
         new Handler().postDelayed(new Runnable() {
             @Override
             public void run() {
 
+                //verificar internet
+                if (InternetConnection.checkConnection(c)) {
+                    // Its Available...
 
-                if (!TextUtils.isEmpty(Utils.getUserEmailPrefes(prefs)) && !TextUtils.isEmpty(Utils.getUserPassPrefes(prefs))) {
+                    //verificar si hay internet con ping
+                    if (InternetConnection.internetIsConnected(c)) {
 
-                    //verificar internet
-                    if (InternetConnection.checkConnection(c)) {
-                        // Its Available...
-
-                        //verificar si hay internet con ping
-                        if (InternetConnection.internetIsConnected(c)) {
-
-                            startActivity(intenHome);
-                            CargaDialog.dismiss();
-                            finish();
-                            connected = true;
-                        } else {
-
-                            AlertDialog.Builder dialogo = new AlertDialog.Builder(c);
-                            dialogo.setTitle("Error de coneccion.");
-                            dialogo.setMessage("Fue imposible establecer una coneccion a internet");
-                            dialogo.setCancelable(false);
-                            dialogo.setIcon(R.drawable.ic_error);
-
-                            dialogo.setPositiveButton("Reintentar", new DialogInterface.OnClickListener() {
-                                @Override
-                                public void onClick(DialogInterface dialog, int which) {
-                                    finish();
-                                    startActivity(getIntent());
-                                }
-                            });
-
-                            dialogo.show();
-
-                        }
+                        startActivity(intentMain);
+                        CargaDialog.dismiss();
+                        finish();
+                        connected = true;
 
                     } else {
-                        // Not Available...
-                        connected = false;
 
                         AlertDialog.Builder dialogo = new AlertDialog.Builder(c);
                         dialogo.setTitle("Error de coneccion.");
@@ -125,9 +100,26 @@ public class SplashActivity extends AppCompatActivity {
                     }
 
                 } else {
-                    startActivity(intentMain);
-                    CargaDialog.dismiss();
-                    finish();
+                    // Not Available...
+                    connected = false;
+
+                    AlertDialog.Builder dialogo = new AlertDialog.Builder(c);
+                    dialogo.setTitle("Error de coneccion.");
+                    dialogo.setMessage("Fue imposible establecer una coneccion a internet");
+                    dialogo.setCancelable(false);
+                    dialogo.setIcon(R.drawable.ic_error);
+
+                    dialogo.setPositiveButton("Reintentar", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            finish();
+                            startActivity(getIntent());
+                        }
+                    });
+
+                    dialogo.show();
+
+
                 }
 
             }
