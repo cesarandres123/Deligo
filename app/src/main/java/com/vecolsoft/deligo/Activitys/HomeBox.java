@@ -3,7 +3,6 @@ package com.vecolsoft.deligo.Activitys;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
-import android.content.SharedPreferences;
 import android.content.pm.ActivityInfo;
 import android.location.Address;
 import android.location.Geocoder;
@@ -66,11 +65,12 @@ import com.vecolsoft.deligo.Modelo.Token;
 import com.vecolsoft.deligo.R;
 import com.vecolsoft.deligo.Remote.IFCMService;
 import com.vecolsoft.deligo.Utils.InternetConnection;
-import com.vecolsoft.deligo.Utils.Utils;
 
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 import de.hdodenhof.circleimageview.CircleImageView;
 import retrofit2.Call;
@@ -283,6 +283,7 @@ public class HomeBox extends AppCompatActivity implements
                     @Override
                     public void onDataChange(DataSnapshot dataSnapshot) {
                         for (DataSnapshot postSnapShot : dataSnapshot.getChildren()) {
+
                             Token token = postSnapShot.getValue(Token.class);
 
                             String json_lat_lng = new Gson().toJson(new LatLng(Common.MyLocation.getLatitude(), Common.MyLocation.getLongitude()));

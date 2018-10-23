@@ -59,7 +59,7 @@ public class SplashActivity extends AppCompatActivity {
 
         if (FirebaseAuth.getInstance().getCurrentUser() != null) {
 
-            ref = database.getReference(Common.user_driver_tbl)
+            ref = database.getReference(Common.user_rider_tbl)
                     .child(FirebaseAuth.getInstance().getCurrentUser().getUid());
         }
 
