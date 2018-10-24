@@ -1,5 +1,6 @@
 package com.vecolsoft.deligo.Remote;
 
+import com.vecolsoft.deligo.Modelo.DataMessage;
 import com.vecolsoft.deligo.Modelo.FCMResponse;
 import com.vecolsoft.deligo.Modelo.Sender;
 
@@ -15,5 +16,5 @@ public interface IFCMService {
             "Authorization:key=AAAA0lwwqlg:APA91bEgynXr9-pwyXGw8TQIdzr4yLDxxQhsE3iMRH4DQn7ZLn5RIT-1BAhKlIt7_cbpmrRxke1_K3WUrn9ZcnggAWLkvOvGuBDT2m4o09bCymud-pZra3KhxgxuVAElov7I_NfXaGOWGHIPBaH1laNAVGUqWe64tg"
     })
     @POST("fcm/send")
-    Call<FCMResponse> sendMessage(@Body Sender body);
+    Call<FCMResponse> sendMessage(@Body DataMessage body);
 }

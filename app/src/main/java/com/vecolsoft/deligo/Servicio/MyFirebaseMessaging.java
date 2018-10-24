@@ -30,37 +30,42 @@ public class MyFirebaseMessaging extends FirebaseMessagingService {
 
         if (remoteMessage.getData() != null) {
 
-            if (remoteMessage.getNotification().getTitle().equals("Cancel")) {
+            Map<String,String> data = remoteMessage.getData();
+            String title = data.get("title");
+            String message = data.get("message");
+
+
+            if (title.equals("Cancel")) {
                 Handler handler = new Handler(Looper.getMainLooper());
                 handler.post(new Runnable() {
                     @Override
                     public void run() {
                         HomeBox.Cancelado();
-                        Toast.makeText(MyFirebaseMessaging.this, remoteMessage.getNotification().getBody(), Toast.LENGTH_SHORT).show();
+                        Toast.makeText(MyFirebaseMessaging.this, message, Toast.LENGTH_SHORT).show();
                     }
                 });
 
-            } else if (remoteMessage.getNotification().getTitle().equals("Aceptado")) {
+            } else if (title.equals("Aceptado")) {
                 Handler handler = new Handler(Looper.getMainLooper());
                 handler.post(new Runnable() {
                     @Override
                     public void run() {
                         HomeBox.Aceptado();
-                        Toast.makeText(MyFirebaseMessaging.this, remoteMessage.getNotification().getBody(), Toast.LENGTH_SHORT).show();
+                        Toast.makeText(MyFirebaseMessaging.this, message, Toast.LENGTH_SHORT).show();
                     }
                 });
 
-            } else if (remoteMessage.getNotification().getTitle().equals("Esta aqui!")) {
+            } else if (title.equals("Esta aqui!")) {
 
 
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    ShowArrivedNotificationAPI26(remoteMessage.getNotification().getBody());
+                    ShowArrivedNotificationAPI26(message);
                 } else {
-                    ShowArrivedNotification(remoteMessage.getNotification().getBody());
+                    ShowArrivedNotification(message);
                 }
 
-            } else if (remoteMessage.getNotification().getTitle().equals("Finaliso")) {
-                ShowRateActivity(remoteMessage.getNotification().getBody());
+            } else if (title.equals("Finaliso")) {
+                ShowRateActivity(message);
 
 
             }

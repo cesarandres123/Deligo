@@ -57,6 +57,7 @@ import com.mapbox.mapboxsdk.maps.MapView;
 import com.mapbox.mapboxsdk.maps.MapboxMap;
 import com.mapbox.mapboxsdk.maps.OnMapReadyCallback;
 import com.vecolsoft.deligo.Common.Common;
+import com.vecolsoft.deligo.Modelo.DataMessage;
 import com.vecolsoft.deligo.Modelo.FCMResponse;
 import com.vecolsoft.deligo.Modelo.Notification;
 import com.vecolsoft.deligo.Modelo.Rider;
@@ -286,12 +287,23 @@ public class HomeBox extends AppCompatActivity implements
 
                             Token token = postSnapShot.getValue(Token.class);
 
-                            String json_lat_lng = new Gson().toJson(new LatLng(Common.MyLocation.getLatitude(), Common.MyLocation.getLongitude()));
+//                            String json_lat_lng = new Gson().toJson(new LatLng(Common.MyLocation.getLatitude(), Common.MyLocation.getLongitude()));
                             String riderToken = FirebaseInstanceId.getInstance().getToken();
-                            Notification data = new Notification(riderToken, json_lat_lng); //enviar esto a la app driver
-                            Sender content = new Sender(token.getToken(), data); // enviar esta data al token
+//                            Notification data = new Notification(riderToken, json_lat_lng); //enviar esto a la app driver
+//                            Sender content = new Sender(token.getToken(), data); // enviar esta data al token
 
-                            mService.sendMessage(content)
+                            Map<String,String> content = new HashMap<>();
+                            content.put("customer",riderToken);
+
+                            if (Common.MyLocation != null) {
+                                content.put("lat", String.valueOf(Common.MyLocation.getLatitude()));
+                                content.put("lng", String.valueOf(Common.MyLocation.getLongitude()));
+                            } else{
+                                Log.e("ERROR" ,"No se concontro la localisacion");
+                            }
+                            DataMessage dataMessage = new DataMessage(token.getToken(),content);
+
+                            mService.sendMessage(dataMessage)
                                     .enqueue(new Callback<FCMResponse>() {
                                         @Override
                                         public void onResponse(Call<FCMResponse> call, Response<FCMResponse> response) {
